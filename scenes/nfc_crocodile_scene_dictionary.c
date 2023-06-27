@@ -80,28 +80,35 @@ bool nfc_crocodile_scene_dictionary_on_event(void* context, SceneManagerEvent ev
         char buf[LOOKUP_LEN * 2];
         uint64_t file_size = storage_file_size(f);
 
+        // Read separator
+        char separator;
+        storage_file_read(f, &separator, 1);
+
         // Reduce file_size by last word length
         storage_file_seek(f, file_size - LOOKUP_LEN, true);
         uint16_t read_count = storage_file_read(f, buf, LOOKUP_LEN);
         for(uint16_t i = 0; i < read_count; i++) {
-            if(buf[read_count - i] == ',') {
+            if(buf[read_count - i] == separator) {
                 FURI_LOG_D(TAG, "Last comma found at index -%d", i);
                 file_size -= i + 1;
                 break;
             }
         }
 
+        // Get random seek
         uint32_t rnd = furi_hal_random_get() % file_size;
         FURI_LOG_I(TAG, "total file size = %llu bytes. Rand seek = %lu", file_size, rnd);
 
+        // Read until next separator
         storage_file_seek(f, rnd, true);
         read_count = storage_file_read(f, buf, 2 * LOOKUP_LEN);
         buf[read_count + 1] = '\0';
         FURI_LOG_I(TAG, "buf = %s", buf);
 
+        // Extract next word
         char* ptr = NULL;
         for(uint16_t i = 0; i < read_count; i++) {
-            if(buf[i] != ',') continue;
+            if(buf[i] != separator) continue;
             if(!ptr) {
                 ptr = buf + i + 1;
             }

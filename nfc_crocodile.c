@@ -29,9 +29,9 @@ NfcCrocodile* nfc_crocodile_alloc() {
         context->view_dispatcher, nfc_crocodile_custom_event_callback);
 
     // GUI
-    //context->gui = furi_record_open(RECORD_GUI);
-    //view_dispatcher_attach_to_gui(
-    //    context->view_dispatcher, context->gui, ViewDispatcherTypeFullscreen);
+    context->gui = furi_record_open(RECORD_GUI);
+    view_dispatcher_attach_to_gui(
+        context->view_dispatcher, context->gui, ViewDispatcherTypeFullscreen);
 
     // Notification
     //context->notifications = furi_record_open(RECORD_NOTIFICATION);
@@ -58,12 +58,15 @@ NfcCrocodile* nfc_crocodile_alloc() {
     view_dispatcher_add_view(
         context->view_dispatcher, NfcCrocodileViewDialog, dialog_ex_get_view(context->dialog));
 
+    // Dialogs
+    //context->dialogs = furi_record_open(RECORD_DIALOGS);
+
     // Storage
     context->storage = furi_record_open(RECORD_STORAGE);
     storage_simply_mkdir(context->storage, STORAGE_APP_DATA_PATH_PREFIX);
 
     // Internal
-    context->storage_type = NfcCrocodileStorageURL;
+    context->storage_type = NfcCrocodileStorageText;
     context->card_content = NULL;
     context->nfc_crocodile_worker = nfc_crocodile_worker_alloc();
 
@@ -94,6 +97,10 @@ void nfc_crocodile_free(NfcCrocodile* context) {
     // Dialog
     view_dispatcher_remove_view(context->view_dispatcher, NfcCrocodileViewDialog);
 
+    // Dialogs
+    //furi_record_close(RECORD_DIALOGS);
+    //context->dialogs = NULL;
+
     // SM&VD
     scene_manager_free(context->scene_manager);
     view_dispatcher_free(context->view_dispatcher);
@@ -103,8 +110,8 @@ void nfc_crocodile_free(NfcCrocodile* context) {
     dialog_ex_free(context->dialog);
 
     // GUI
-    //furi_record_close(RECORD_GUI);
-    //context->gui = NULL;
+    furi_record_close(RECORD_GUI);
+    context->gui = NULL;
 
     // Notification
     //furi_record_close(RECORD_NOTIFICATION);
@@ -116,9 +123,6 @@ void nfc_crocodile_free(NfcCrocodile* context) {
 int32_t nfc_crocodile_main(void* p) {
     UNUSED(p);
     NfcCrocodile* context = nfc_crocodile_alloc();
-
-    Gui* gui = furi_record_open(RECORD_GUI);
-    view_dispatcher_attach_to_gui(context->view_dispatcher, gui, ViewDispatcherTypeFullscreen);
 
     scene_manager_next_scene(context->scene_manager, NfcCrocodileSceneMainMenu);
     view_dispatcher_run(context->view_dispatcher);

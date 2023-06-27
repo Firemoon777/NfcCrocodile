@@ -118,11 +118,10 @@ void nfc_crocodile_worker_card_init(NfcCrocodileWorker* nfc_crocodile_worker) {
         0x00 // CC
     );
     // Memory content at delivery
-    nfc_crocodile_worker_card_init_row(card, 0x4, 0x01, 0x03, 0x88, 0x08);
-    nfc_crocodile_worker_card_init_row(card, 0x5, 0x66, 0x03, 0x00, 0xFE);
+    nfc_crocodile_worker_card_init_row(card, 0x4, 0x03, 0x00, 0xFE, 0x00);
 
     // Fill user space with zeros
-    for(uint8_t i = 0x6; i < 0x82; i++) {
+    for(uint8_t i = 0x5; i < 0x82; i++) {
         nfc_crocodile_worker_card_init_row(card, i, 0x00, 0x00, 0x00, 0x00);
     }
 
@@ -133,23 +132,28 @@ void nfc_crocodile_worker_card_init(NfcCrocodileWorker* nfc_crocodile_worker) {
     nfc_crocodile_worker_card_init_row(card, 0x85, 0xFF, 0xFF, 0xFF, 0xFF);
     nfc_crocodile_worker_card_init_row(card, 0x86, 0x00, 0x00, 0x00, 0x00);
 
-    uint8_t* ptr = card + 0x5 * 4 + 3;
+    uint8_t* start = card + 0x5 * 4 + 0;
+    uint8_t* ptr = start;
 
     // https://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk5.v12.0.0%2Fnfc_ndef_format_dox.html&anchor=nfc_ndef_format_flags
     if(nfc_crocodile_worker->storage_type == NfcCrocodileStorageText) {
         const char* mime = "T";
-        const uint8_t mime_len = strlen(mime);
+        const uint32_t mime_len = strlen(mime);
         const char* lang_code = "en";
-        const uint8_t lang_code_len = strlen(lang_code);
+        const uint32_t lang_code_len = strlen(lang_code);
         const char* content = nfc_crocodile_worker->card_content;
-        const uint8_t content_length = strlen(content);
+        const uint32_t content_length = strlen(content);
 
-        // flags, ME + MD + SR + Media type
-        *ptr++ = 0b10000000 | 0b01000000 | 0b00010000 | 0x01;
+        // flags, ME + MD + /*SR +*/ Media type
+        *ptr++ = 0b10000000 | 0b01000000 | /*0b00010000 |*/ 0x01;
         // type length
         *ptr++ = mime_len;
         // payload length
-        *ptr++ = content_length + lang_code_len + 1;
+        uint32_t payload_length = content_length + lang_code_len + 1;
+        *ptr++ = (payload_length >> 24) & 0xFF;
+        *ptr++ = (payload_length >> 16) & 0xFF;
+        *ptr++ = (payload_length >> 8) & 0xFF;
+        *ptr++ = payload_length & 0xFF;
         // ID length
         // skipped
         // Payload type
@@ -164,10 +168,6 @@ void nfc_crocodile_worker_card_init(NfcCrocodileWorker* nfc_crocodile_worker) {
         // true payload
         memcpy(ptr, content, content_length);
         ptr += content_length;
-        // Message end
-        *ptr++ = 0xFE;
-        // fill payload size
-        nfc_crocodile_worker->card[0x5 * 4 + 2] = ptr - (card + 0x6 * 4);
     } else if(nfc_crocodile_worker->storage_type == NfcCrocodileStorageURL) {
         const char* mime = "U";
         const uint8_t mime_len = strlen(mime);
@@ -176,12 +176,16 @@ void nfc_crocodile_worker_card_init(NfcCrocodileWorker* nfc_crocodile_worker) {
         const char* content = nfc_crocodile_worker->card_content;
         const uint8_t content_length = strlen(content);
 
-        // flags, ME + MD + SR + Media type
-        *ptr++ = 0b10000000 | 0b01000000 | 0b00010000 | 0x01;
+        // flags, ME + MD + /*SR +*/ Media type
+        *ptr++ = 0b10000000 | 0b01000000 | /*0b00010000 |*/ 0x01;
         // type length
         *ptr++ = mime_len;
         // payload length
-        *ptr++ = content_length + site_len + 1;
+        uint32_t payload_length = content_length + site_len + 1;
+        *ptr++ = (payload_length >> 24) & 0xFF;
+        *ptr++ = (payload_length >> 16) & 0xFF;
+        *ptr++ = (payload_length >> 8) & 0xFF;
+        *ptr++ = payload_length & 0xFF;
         // ID length
         // skipped
         // Payload type
@@ -196,11 +200,14 @@ void nfc_crocodile_worker_card_init(NfcCrocodileWorker* nfc_crocodile_worker) {
         // true payload
         memcpy(ptr, content, content_length);
         ptr += content_length;
-        // Message end
-        *ptr++ = 0xFE;
-        // fill payload size
-        nfc_crocodile_worker->card[0x5 * 4 + 2] = ptr - (card + 0x6 * 4);
     }
+    // fill containter size
+    uint32_t container_length = ptr - start;
+    nfc_crocodile_worker->card[0x4 * 4 + 1] = 0xFF;
+    nfc_crocodile_worker->card[0x4 * 4 + 2] = (container_length >> 8) & 0xFF;
+    nfc_crocodile_worker->card[0x4 * 4 + 3] = container_length & 0xFF;
+    // Message end
+    *ptr++ = 0xFE;
 }
 
 bool nfc_crocodile_worker_callback(

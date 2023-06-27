@@ -33,14 +33,14 @@ typedef enum {
 
 typedef struct NfcCrocodile {
     // GUI
-    //NotificationApp* notifications;
-    //Gui* gui;
+    Gui* gui;
     SceneManager* scene_manager;
     ViewDispatcher* view_dispatcher;
     Submenu* submenu;
     Popup* popup;
     VariableItemList* variable_item_list;
     DialogEx* dialog;
+    //DialogsApp* dialogs;
 
     // Storage
     Storage* storage;
