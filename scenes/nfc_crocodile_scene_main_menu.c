@@ -56,6 +56,10 @@ bool nfc_crocodile_scene_main_menu_on_event(void* context, SceneManagerEvent eve
             scene_manager_next_scene(nfc_crocodile->scene_manager, NfcCrocodileSceneSettings);
             consumed = true;
             break;
+        case NfcCrocodileSceneMainMenuAboutItem:
+            scene_manager_next_scene(nfc_crocodile->scene_manager, NfcCrocodileSceneAbout);
+            consumed = true;
+            break;
         }
     }
 
